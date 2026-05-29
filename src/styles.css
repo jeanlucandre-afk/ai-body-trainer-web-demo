@@ -108,7 +108,7 @@ h1, h2, h3, p { margin: 0; }
 .tabs .active { background: var(--black); color:white; }
 .tabs .active svg { animation: tabLift .3s var(--ease-out); }
 .onboarding { height:100%; background: linear-gradient(135deg, var(--black), var(--stone), var(--warm)); color:white; display:flex; flex-direction:column; }
-.onboard-top { padding: 56px 24px 12px; display:grid; grid-template-columns:52px 1fr 52px; align-items:center; gap:14px; }
+.onboard-top { padding: 78px 24px 14px; display:grid; grid-template-columns:52px 1fr 52px; align-items:center; gap:14px; }
 .onboard-top button, .review-head button, .gym-top button { width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,.12); color:white; display:grid; place-items:center; }
 .onboard-top .logo { justify-self:end; width:52px; min-width:52px; transform:none; }
 .onboard-top .logo-text { display:none; }
@@ -272,4 +272,5 @@ h1, h2, h3, p { margin: 0; }
   .phone-frame { width: 100vw; height: 100dvh; border-radius: 0; }
   .dynamic-island { display:none; }
   .hero-header { padding-top: 58px; }
+  .onboard-top { padding-top: 56px; }
 }
