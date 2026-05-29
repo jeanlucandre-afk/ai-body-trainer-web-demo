@@ -208,7 +208,7 @@ h1, h2, h3, p { margin: 0; }
 .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
 .chips span { background:var(--linen); border-radius:999px; padding:6px 8px; font-size:12px; color:var(--dark-gold); font-weight:800; }
 .gym { height:100%; background:linear-gradient(135deg, var(--ink), var(--black), #273332); color:white; overflow-y:auto; }
-.gym-top { padding: 56px 24px 14px; }
+.gym-top { padding: 82px 24px 14px; }
 .gym-top h1 { font-size:25px; }
 .gym-main { display:grid; gap:18px; padding: 14px 22px 34px; }
 .gym-summary { display:flex; justify-content:space-between; gap:12px; align-items:start; }
@@ -273,4 +273,5 @@ h1, h2, h3, p { margin: 0; }
   .dynamic-island { display:none; }
   .hero-header { padding-top: 58px; }
   .onboard-top { padding-top: 56px; }
+  .gym-top { padding-top: 56px; }
 }
