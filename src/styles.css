@@ -112,17 +112,17 @@ h1, h2, h3, p { margin: 0; }
 .title h1 { margin-top:8px; font-size:32px; line-height:1.08; font-weight:950; }
 .title p { color:rgba(255,255,255,.74); margin-top:10px; line-height:1.35; }
 .title.center { text-align:center; }
-.scan-visual { height: 310px; border-radius: 34px; overflow:hidden; position:relative; background: radial-gradient(circle at 50% 42%, rgba(169,205,187,.15), transparent 28%), linear-gradient(135deg, var(--ink), rgba(94,102,98,.9), var(--ink)); display:grid; place-items:center; }
-.scan-visual b { position:absolute; bottom:26px; opacity:.85; }
-.scan-beam { position:absolute; inset:18px 72px; border-radius:42%; background:linear-gradient(90deg, transparent, rgba(169,205,187,.12), transparent); animation: beamBreathe 2.4s var(--ease-in-out) infinite alternate; }
+.scan-visual { height: 310px; border-radius: 34px; overflow:hidden; position:relative; background: radial-gradient(circle at 50% 46%, rgba(169,205,187,.15), transparent 28%), linear-gradient(135deg, var(--ink), rgba(94,102,98,.9), var(--ink)); display:grid; place-items:center; padding-bottom:30px; }
+.scan-visual b { position:absolute; left:24px; right:24px; bottom:24px; z-index:3; opacity:.9; text-align:center; line-height:1.08; }
+.scan-beam { position:absolute; inset:18px 72px; border-radius:42%; background:linear-gradient(90deg, transparent, rgba(169,205,187,.12), transparent); transform-origin:center; animation: beamBreathe 2.4s var(--ease-in-out) infinite alternate; }
 .scan-pulse { position:absolute; width:178px; height:178px; border-radius:50%; border:1px solid rgba(226,219,205,.28); animation: pulseOut 2.2s var(--ease-out) infinite; }
 .scan-pulse.p2 { animation-delay:.72s; border-color:rgba(43,124,120,.35); }
-.scan-dot { position:absolute; left:50%; top:50%; width:8px; height:8px; margin:-4px; border-radius:50%; background:rgba(226,219,205,.78); transform: rotate(calc(var(--i) * 45deg)) translateX(126px); animation: dotOrbit 6s linear infinite; animation-delay: calc(var(--i) * -180ms); }
+.scan-dot { position:absolute; left:50%; top:46%; width:8px; height:8px; margin:-4px; border-radius:50%; background:rgba(226,219,205,.78); transform: rotate(calc(var(--i) * 45deg)) translateX(126px); animation: dotOrbit 6s linear infinite; animation-delay: calc(var(--i) * -180ms); }
 .scan-line { position:absolute; left:50%; width:3px; height:230px; border-radius:4px; background:linear-gradient(180deg, transparent, var(--teal), transparent); transform:translateX(-118px); opacity:.72; box-shadow:0 0 24px rgba(169,205,187,.45); }
 .scan-line.active { animation: scan 1.45s ease-in-out infinite alternate; }
 .scan-rings:before, .scan-rings:after { content:""; position:absolute; inset:35px 84px; border:1px solid rgba(255,255,255,.09); border-radius: 35%; transform:rotate(-20deg); }
 .scan-rings:after { inset:54px 104px; border-color:rgba(143,113,58,.2); transform:rotate(17deg); }
-.scan-circle { width:180px; height:180px; border-radius:50%; display:grid; place-items:center; background: conic-gradient(var(--linen) var(--progress), rgba(255,255,255,.18) 0); }
+.scan-circle { width:180px; height:180px; border-radius:50%; display:grid; place-items:center; background: conic-gradient(var(--linen) var(--progress), rgba(255,255,255,.18) 0); position:relative; z-index:2; }
 .scan-circle:before { content:""; position:absolute; width:146px; height:146px; border-radius:50%; background:var(--black); }
 .scan-circle svg { position:relative; z-index:1; }
 .glass, .dark-card { padding:20px; border-radius:24px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.11); }
