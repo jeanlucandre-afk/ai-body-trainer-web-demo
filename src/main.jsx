@@ -80,7 +80,9 @@ function App() {
       <div className="phone-frame">
         <div className="dynamic-island" />
         <div className="app-root">
-          {screen}
+          <div key={`${route}-${tab}`} className="route-stage">
+            {screen}
+          </div>
           {route !== "onboarding" && route !== "gym" && (
             <TabBar tab={tab} setTab={(id) => { setTab(id); navigate("tab", id); }} />
           )}
@@ -134,6 +136,9 @@ function HomeScreen({ navigate }) {
   return (
     <Shell title="Hi, Peter!" subtitle="Your adaptive training plan is ready." navigate={navigate}>
       <button className="scan-entry reveal" onClick={() => navigate("onboarding")}>
+        <span className="scan-orbit o1" />
+        <span className="scan-orbit o2" />
+        <span className="scan-orbit o3" />
         <span className="badge teal">Scan ready</span>
         <strong>Build a plan from your body</strong>
         <span className="cta-line">Start Smart Body Scan <ChevronRight size={24} /></span>
@@ -269,7 +274,7 @@ function OnboardingScreen({ navigate, setHasPlan }) {
             <ThinkingOrb />
             <Title eyebrow="" title="Building your training" copy={buildStage < 0 ? "Starting the AI trainer and preparing your body scan data." : stages[Math.min(buildStage, stages.length - 1)]} center />
             <div className="stage-list">
-              {stages.map((s, i) => <div key={s} className={i <= buildStage ? "done stage" : "stage"}><span>{i < buildStage ? <Check /> : <Sparkles />}</span><div><b>{s}</b><small>{i < buildStage ? "Complete" : i === buildStage ? "In progress" : "Queued"}</small></div></div>)}
+              {stages.map((s, i) => <div key={s} className={i <= buildStage ? "done stage" : "stage"} style={{ "--i": i }}><span>{i < buildStage ? <Check /> : <Sparkles />}</span><div><b>{s}</b><small>{i < buildStage ? "Complete" : i === buildStage ? "In progress" : "Queued"}</small></div></div>)}
             </div>
           </div>
         )}
@@ -355,9 +360,10 @@ function GymMode({ navigate }) {
           <div><span className="badge green">Set guidance active</span><h2>{ex.name}</h2><p>{ex.station} · Exercise {exerciseIndex + 1} of 3</p></div>
           <div className="timer">{time}<span>active</span></div>
         </div>
-        <section className="exercise-stage">
+        <section key={`${ex.name}-${set}`} className="exercise-stage active-stage">
+          <span className="stage-scan-path" />
           <div className="row between"><div><h3>Set {set}</h3><b>{ex.reps} x {ex.load}</b></div><ProgressRing done={set - 1} total={ex.sets} /></div>
-          <img src={AS(ex.img)} alt="" />
+          <div className="exercise-media"><img src={AS(ex.img)} alt="" /></div>
           <p>{ex.note}</p>
         </section>
         <div className="set-row">{Array.from({ length: ex.sets }).map((_, i) => <span key={i} className={i + 1 < set ? "done" : i + 1 === set ? "active" : ""}>{i + 1 < set ? <Check /> : i + 1}</span>)}</div>
@@ -397,14 +403,40 @@ function PlanRow({ session }) { return <div className="plan-row"><b>{session.day
 function ProgressRing({ done, total }) { return <div className="progress-ring" style={{ "--p": `${(done / total) * 360}deg` }}><span>{done}/{total}</span></div>; }
 
 function ScanVisual({ progress, active }) {
-  return <div className="scan-visual"><span className={active ? "scan-line active" : "scan-line"} /><div className="scan-rings" /><div className="scan-circle" style={{ "--progress": `${progress}%` }}><Activity size={76} /></div><b>{active ? "Reading scan data" : "Ready to start scan"}</b></div>;
+  return (
+    <div className="scan-visual">
+      <span className="scan-beam" />
+      <span className="scan-pulse p1" />
+      <span className="scan-pulse p2" />
+      {Array.from({ length: 8 }).map((_, i) => <i key={i} className="scan-dot" style={{ "--i": i }} />)}
+      <span className={active ? "scan-line active" : "scan-line"} />
+      <div className="scan-rings" />
+      <div className="scan-circle" style={{ "--progress": `${progress}%` }}><Activity size={76} /></div>
+      <b>{active ? "Reading scan data" : "Ready to start scan"}</b>
+    </div>
+  );
 }
 
 function ChoiceScreen({ eyebrow, title, copy, options, selected, toggle, grid }) {
-  return <div className="onboard-stack"><Title eyebrow={eyebrow} title={title} copy={copy} /><div className={grid ? "choice-grid" : "choice-list"}>{options.map(x => <button key={x} className={selected.includes(x) ? "selected" : ""} onClick={() => toggle(x)}><span>{selected.includes(x) ? <CheckCircle2 /> : <Circle />}</span><b>{x}</b></button>)}</div></div>;
+  return <div className="onboard-stack"><Title eyebrow={eyebrow} title={title} copy={copy} /><div className={grid ? "choice-grid" : "choice-list"}>{options.map((x, i) => <button key={x} style={{ "--i": i }} className={selected.includes(x) ? "selected" : ""} onClick={() => toggle(x)}><span>{selected.includes(x) ? <CheckCircle2 /> : <Circle />}</span><b>{x}</b></button>)}</div></div>;
 }
 
-function ThinkingOrb() { return <div className="thinking"><span /><span /><span /><Logo compact /></div>; }
+function ThinkingOrb() {
+  return (
+    <div className="thinking">
+      <span className="halo h1" />
+      <span className="halo h2" />
+      <span className="halo h3" />
+      {Array.from({ length: 10 }).map((_, i) => <i key={i} style={{ "--i": i }} />)}
+      <div className="thinking-core">
+        <Logo compact />
+        <em />
+        <em />
+        <em />
+      </div>
+    </div>
+  );
+}
 function TrainingProfile() { return <section className="dark-card"><span className="badge gold">Training profile</span><h2>Strength Balance</h2><p>Strength first, with mobility between heavier days.</p><div className="metric-grid"><Metric value="3 days" label="training" /><Metric value="2 weeks" label="next scan" /><Metric value="Plan" label="guided loads" /></div></section>; }
 function LogicCard() { return <section className="glass logic"><h2>How the plan was built</h2><div><Metric value="Scan" label="Body composition" /><Metric value="Goal" label="Strength priority" /><Metric value="Plan" label="guided loads" /></div></section>; }
 function WorkoutReveal() { return <section className="dark-card"><span className="badge teal">Ready</span><h2>Lower body + core</h2><p>Monday · 58 min · Strength build</p><div className="data-bars">{Array.from({ length: 18 }).map((_, i) => <i key={i} />)}</div></section>; }
