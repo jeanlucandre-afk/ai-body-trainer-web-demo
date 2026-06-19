@@ -269,6 +269,13 @@ function WorkoutReview({ navigate, session }) {
           <p>{session.duration_minutes} min · {session.focus}</p>
           <div className="metric-grid"><Metric value={session.metrics.exercise_count} label="exercises" /><Metric value={`${session.metrics.plan_match_percent}%`} label="plan match" /><Metric value={session.metrics.target_days_per_week} label="target days" /></div>
         </section>
+        {session.safety_state === "human_escalation" && (
+          <section className="safety-alert">
+            <span className="badge gold">Safety review</span>
+            <h2>Stop the painful movement</h2>
+            <p>Your coach has been flagged. Keep training only with pain-free alternatives and message on WhatsApp before pushing load.</p>
+          </section>
+        )}
         <section className="start-card">
           <span className="badge dark">Gym mode</span>
           <h2>Start training</h2>
@@ -291,23 +298,33 @@ function GymMode({ navigate, session, updateSessionStatus }) {
   const [set, setSet] = useState(1);
   const [elapsed, setElapsed] = useState(0);
   const [panel, setPanel] = useState(null);
+  const [syncWarning, setSyncWarning] = useState(null);
   const ex = session.exercises[exerciseIndex];
 
   useEffect(() => {
     postWorkoutEvent(session.session_id, "session_started", { title: session.title })
-      .catch((eventError) => console.warn("Could not record session_started", eventError));
+      .catch((eventError) => {
+        console.warn("Could not record session_started", eventError);
+        setSyncWarning("Workout opened, but the event log is not syncing.");
+      });
     const id = setInterval(() => setElapsed((x) => x + 1), 1000);
     return () => clearInterval(id);
   }, [session.session_id, session.title]);
 
   const advance = async () => {
     await postWorkoutEvent(session.session_id, "set_completed", { exerciseId: ex.exercise_id, exerciseName: ex.name, set })
-      .catch((eventError) => console.warn("Could not record set_completed", eventError));
+      .catch((eventError) => {
+        console.warn("Could not record set_completed", eventError);
+        setSyncWarning("Set saved on screen, but backend sync failed.");
+      });
     if (set < ex.sets) setSet(set + 1);
     else if (exerciseIndex < session.exercises.length - 1) { setExerciseIndex(exerciseIndex + 1); setSet(1); }
     else {
       await postWorkoutEvent(session.session_id, "session_completed", { elapsedSeconds: elapsed })
-        .catch((eventError) => console.warn("Could not record session_completed", eventError));
+        .catch((eventError) => {
+          console.warn("Could not record session_completed", eventError);
+          setSyncWarning("Workout finished locally, but completion did not sync yet.");
+        });
       updateSessionStatus("completed");
       navigate("workout", "training");
     }
@@ -315,7 +332,10 @@ function GymMode({ navigate, session, updateSessionStatus }) {
 
   const reportPain = async () => {
     await postWorkoutEvent(session.session_id, "pain_reported", { exerciseId: ex.exercise_id, exerciseName: ex.name })
-      .catch((eventError) => console.warn("Could not record pain_reported", eventError));
+      .catch((eventError) => {
+        console.warn("Could not record pain_reported", eventError);
+        setSyncWarning("Pain report did not sync. Stop this movement and message your coach.");
+      });
     setPanel("Pain reported");
   };
 
@@ -333,6 +353,7 @@ function GymMode({ navigate, session, updateSessionStatus }) {
         </section>
         <div className="set-row">{Array.from({ length: ex.sets }).map((_, i) => <span key={i} className={i + 1 < set ? "done" : i + 1 === set ? "active" : ""}>{i + 1 < set ? <Check /> : i + 1}</span>)}</div>
         <div className="gym-panels">{["Plan", "Sub", "Pain", "Notes", "Coach"].map(x => <button key={x} onClick={x === "Pain" ? reportPain : () => setPanel(x)}>{x}</button>)}</div>
+        {syncWarning && <button className="sync-warning" onClick={() => setPanel("Sync warning")}>{syncWarning}</button>}
         <button className="primary gold big" onClick={advance}>{set === ex.sets ? (exerciseIndex === session.exercises.length - 1 ? "Finish workout" : "Next exercise") : "Save and continue"} <ChevronRight /></button>
       </main>
       {panel && <Sheet title={panel} close={() => setPanel(null)}>{panelCopy(panel, session, ex)}</Sheet>}
@@ -372,6 +393,7 @@ function panelCopy(panel, session, ex) {
   if (panel === "Workout plan" || panel === "Plan") return session.exercises.map(item => item.name).join(", ");
   if (panel === "Sub") return ex.substitutions[0]?.reason ? `${ex.substitutions[0].name}: ${ex.substitutions[0].reason}` : "Message your coach if this station is blocked.";
   if (panel === "Pain reported") return "Stop this movement. Your coach has been flagged to handle this conservatively.";
+  if (panel === "Sync warning") return "Your workout can continue, but the latest event did not reach the backend. Keep the screen open and message your coach if the warning persists.";
   return "This panel keeps secondary details available without cluttering gym mode.";
 }
 

@@ -7,7 +7,8 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "smoke:production": "node scripts/production-smoke.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.4",
