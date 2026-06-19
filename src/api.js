@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? window.location.origin : "");
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 
 export const hasApi = Boolean(API_BASE);

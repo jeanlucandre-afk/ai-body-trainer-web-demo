@@ -17,14 +17,14 @@ VITE_DEMO_MODE=true npm run dev
 
 ## Required Environment
 
-Production requires:
+Production can use the same-origin `/api/*` proxy automatically. You can also set the explicit API base:
 
 ```bash
 VITE_API_BASE_URL=https://ai-body-trainer-web-demo.vercel.app
 npm run dev
 ```
 
-The web deployment proxies `/api/*` to the backend in `vercel.json`, so production uses the web origin as its API base. Do not leave `VITE_API_BASE_URL` empty for real WhatsApp links.
+The web deployment proxies `/api/*` to the backend in `vercel.json`, so production falls back to the web origin when `VITE_API_BASE_URL` is empty. Local real-link testing still needs `VITE_API_BASE_URL`; fixture-only development should use `VITE_DEMO_MODE=true`.
 
 ## Build
 
