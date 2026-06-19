@@ -2,6 +2,7 @@ import { chromium } from "playwright";
 
 const apiBase = process.env.SMOKE_API_BASE ?? "https://ai-personal-trainer-whatsapp-mvp.vercel.app";
 const webBase = process.env.SMOKE_WEB_BASE ?? "https://ai-body-trainer-web-demo.vercel.app";
+const adminApiKey = process.env.SMOKE_ADMIN_API_KEY;
 
 function assert(condition, message, details) {
   if (!condition) {
@@ -19,9 +20,11 @@ async function jsonFetch(url, init) {
 }
 
 async function bootstrap(displayName, payload = {}) {
+  const headers = { "content-type": "application/json" };
+  if (adminApiKey) headers.authorization = `Bearer ${adminApiKey}`;
   const { response, body } = await jsonFetch(`${apiBase}/api/demo/bootstrap`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers,
     body: JSON.stringify({ displayName, ...payload })
   });
   assert(response.ok && body?.workoutUrl && body?.workoutSessionId, "demo bootstrap failed", body);

@@ -377,6 +377,52 @@ function GymMode({ navigate, session, updateSessionStatus }) {
     }
   };
 
+  const skipExercise = async () => {
+    await postWorkoutEvent(session.session_id, "exercise_skipped", { exerciseId: ex.exercise_id, exerciseName: ex.name, set })
+      .catch((eventError) => {
+        console.warn("Could not record exercise_skipped", eventError);
+        setSyncWarning("Exercise skipped on screen, but backend sync failed.");
+      });
+    if (exerciseIndex < session.exercises.length - 1) {
+      setExerciseIndex(exerciseIndex + 1);
+      setSet(1);
+      setPanel("Exercise skipped");
+      return;
+    }
+    await postWorkoutEvent(session.session_id, "session_completed", { elapsedSeconds: elapsed, completedAfterSkip: true })
+      .catch((eventError) => {
+        console.warn("Could not record session_completed", eventError);
+        setSyncWarning("Workout finished locally, but completion did not sync yet.");
+      });
+    updateSessionStatus("completed");
+    navigate("workout", "training");
+  };
+
+  const requestSubstitution = async () => {
+    const substitution = ex.substitutions[0];
+    await postWorkoutEvent(session.session_id, "substitution_requested", {
+      exerciseId: ex.exercise_id,
+      exerciseName: ex.name,
+      substitutionName: substitution?.name,
+      substitutionReason: substitution?.reason
+    }).catch((eventError) => {
+      console.warn("Could not record substitution_requested", eventError);
+      setSyncWarning("Substitution opened, but backend sync failed.");
+    });
+    setPanel("Sub");
+  };
+
+  const addNote = async () => {
+    const note = window.prompt("Add a workout note");
+    if (!note?.trim()) return;
+    await postWorkoutEvent(session.session_id, "note_added", { exerciseId: ex.exercise_id, exerciseName: ex.name, note: note.trim() })
+      .catch((eventError) => {
+        console.warn("Could not record note_added", eventError);
+        setSyncWarning("Note saved on screen, but backend sync failed.");
+      });
+    setPanel("Note saved");
+  };
+
   const reportPain = async () => {
     await postWorkoutEvent(session.session_id, "pain_reported", { exerciseId: ex.exercise_id, exerciseName: ex.name })
       .catch((eventError) => {
@@ -399,7 +445,13 @@ function GymMode({ navigate, session, updateSessionStatus }) {
           <p>{ex.note}</p>
         </section>
         <div className="set-row">{Array.from({ length: ex.sets }).map((_, i) => <span key={i} className={i + 1 < set ? "done" : i + 1 === set ? "active" : ""}>{i + 1 < set ? <Check /> : i + 1}</span>)}</div>
-        <div className="gym-panels">{["Plan", "Sub", "Pain", "Notes", "Coach"].map(x => <button key={x} onClick={x === "Pain" ? reportPain : () => setPanel(x)}>{x}</button>)}</div>
+        <div className="gym-panels">
+          <button onClick={() => setPanel("Plan")}>Plan</button>
+          <button onClick={requestSubstitution}>Sub</button>
+          <button onClick={skipExercise}>Skip</button>
+          <button onClick={reportPain}>Pain</button>
+          <button onClick={addNote}>Notes</button>
+        </div>
         {syncWarning && <button className="sync-warning" onClick={() => setPanel("Sync warning")}>{syncWarning}</button>}
         <button className="primary gold big" onClick={advance}>{set === ex.sets ? (exerciseIndex === session.exercises.length - 1 ? "Finish workout" : "Next exercise") : "Save and continue"} <ChevronRight /></button>
       </main>
@@ -439,6 +491,8 @@ function Sheet({ title, children, close }) {
 function panelCopy(panel, session, ex) {
   if (panel === "Workout plan" || panel === "Plan") return session.exercises.map(item => item.name).join(", ");
   if (panel === "Sub") return ex.substitutions[0]?.reason ? `${ex.substitutions[0].name}: ${ex.substitutions[0].reason}` : "Message your coach if this station is blocked.";
+  if (panel === "Exercise skipped") return "Skipped. The event was sent to your coach history so the next plan can adjust.";
+  if (panel === "Note saved") return "Saved. Your coach can use this note when adjusting future sessions.";
   if (panel === "Pain reported") return "Stop this movement. Your coach has been flagged to handle this conservatively.";
   if (panel === "Sync warning") return "Your workout can continue, but the latest event did not reach the backend. Keep the screen open and message your coach if the warning persists.";
   return "This panel keeps secondary details available without cluttering gym mode.";
