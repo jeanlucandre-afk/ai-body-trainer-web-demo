@@ -19,7 +19,7 @@ import {
   Trophy,
   UserRound
 } from "lucide-react";
-import { exchangeMagicToken, hasApi, loadWorkoutSession, postWorkoutEvent, submitOnboarding } from "./api.js";
+import { demoMode, exchangeMagicToken, hasApi, loadWorkoutSession, postWorkoutEvent, submitOnboarding } from "./api.js";
 import { fixtureSession, weekSessions } from "./fixture.js";
 import "./styles.css";
 
@@ -41,25 +41,37 @@ function readInitialRoute() {
   return { route: match[1], id: match[2], tab: match[1] === "workout" ? "training" : "home", token };
 }
 
+function removeTokenFromUrl() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("token")) return;
+  url.searchParams.delete("token");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 function App() {
   const initial = useMemo(readInitialRoute, []);
+  const apiRequired = initial.route === "workout" || initial.route === "onboarding";
   const [route, setRoute] = useState(initial.route);
   const [tab, setTab] = useState(initial.tab);
   const [session, setSession] = useState(fixtureSession);
-  const [loadState, setLoadState] = useState(hasApi && initial.route === "workout" ? "loading" : "ready");
-  const [error, setError] = useState(null);
+  const [loadState, setLoadState] = useState(!hasApi && apiRequired && !demoMode ? "error" : hasApi && initial.route === "workout" ? "loading" : "ready");
+  const [error, setError] = useState(!hasApi && apiRequired && !demoMode ? new Error("API base URL is not configured") : null);
 
   useEffect(() => {
     if (initial.route !== "workout" || !hasApi) return;
     let active = true;
     (async () => {
       try {
-        if (initial.token) await exchangeMagicToken({ token: initial.token, sessionId: initial.id });
+        if (initial.token) {
+          await exchangeMagicToken({ token: initial.token, sessionId: initial.id });
+          removeTokenFromUrl();
+        }
         const next = await loadWorkoutSession(initial.id);
         if (!active) return;
         setSession(next);
         setLoadState("ready");
-        await postWorkoutEvent(next.session_id, "session_opened", { source: "website" });
+        postWorkoutEvent(next.session_id, "session_opened", { source: "website" })
+          .catch((eventError) => console.warn("Could not record session_opened", eventError));
       } catch (err) {
         if (!active) return;
         setError(err);
@@ -179,7 +191,10 @@ function OnboardingScreen({ navigate, memberId, token, setSession }) {
   const finish = async () => {
     setSubmitting(true);
     try {
-      if (hasApi && token) await exchangeMagicToken({ token });
+      if (hasApi && token) {
+        await exchangeMagicToken({ token });
+        removeTokenFromUrl();
+      }
       const result = await submitOnboarding(memberId || fixtureSession.member_id, {
         goals,
         injuries: injuries.includes("No injuries") ? [] : injuries,
@@ -279,24 +294,28 @@ function GymMode({ navigate, session, updateSessionStatus }) {
   const ex = session.exercises[exerciseIndex];
 
   useEffect(() => {
-    postWorkoutEvent(session.session_id, "session_started", { title: session.title });
+    postWorkoutEvent(session.session_id, "session_started", { title: session.title })
+      .catch((eventError) => console.warn("Could not record session_started", eventError));
     const id = setInterval(() => setElapsed((x) => x + 1), 1000);
     return () => clearInterval(id);
   }, [session.session_id, session.title]);
 
   const advance = async () => {
-    await postWorkoutEvent(session.session_id, "set_completed", { exerciseId: ex.exercise_id, exerciseName: ex.name, set });
+    await postWorkoutEvent(session.session_id, "set_completed", { exerciseId: ex.exercise_id, exerciseName: ex.name, set })
+      .catch((eventError) => console.warn("Could not record set_completed", eventError));
     if (set < ex.sets) setSet(set + 1);
     else if (exerciseIndex < session.exercises.length - 1) { setExerciseIndex(exerciseIndex + 1); setSet(1); }
     else {
-      await postWorkoutEvent(session.session_id, "session_completed", { elapsedSeconds: elapsed });
+      await postWorkoutEvent(session.session_id, "session_completed", { elapsedSeconds: elapsed })
+        .catch((eventError) => console.warn("Could not record session_completed", eventError));
       updateSessionStatus("completed");
       navigate("workout", "training");
     }
   };
 
   const reportPain = async () => {
-    await postWorkoutEvent(session.session_id, "pain_reported", { exerciseId: ex.exercise_id, exerciseName: ex.name });
+    await postWorkoutEvent(session.session_id, "pain_reported", { exerciseId: ex.exercise_id, exerciseName: ex.name })
+      .catch((eventError) => console.warn("Could not record pain_reported", eventError));
     setPanel("Pain reported");
   };
 

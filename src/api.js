@@ -1,9 +1,13 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 
 export const hasApi = Boolean(API_BASE);
+export const demoMode = DEMO_MODE;
 
 export async function exchangeMagicToken({ token, sessionId }) {
-  if (!API_BASE || !token) return { ok: true, demo: true };
+  if (!token) return { ok: true, demo: true };
+  if (!API_BASE && DEMO_MODE) return { ok: true, demo: true };
+  if (!API_BASE) throw new Error("API base URL is not configured");
   return request("/api/auth/link/exchange", {
     method: "POST",
     body: JSON.stringify({ token, sessionId })
@@ -16,7 +20,8 @@ export async function loadWorkoutSession(sessionId) {
 }
 
 export async function postWorkoutEvent(sessionId, eventType, payload = {}) {
-  if (!API_BASE) return { ok: true, demo: true };
+  if (!API_BASE && DEMO_MODE) return { ok: true, demo: true };
+  if (!API_BASE) throw new Error("API base URL is not configured");
   return request(`/api/workout-sessions/${sessionId}/events`, {
     method: "POST",
     body: JSON.stringify({
@@ -28,7 +33,8 @@ export async function postWorkoutEvent(sessionId, eventType, payload = {}) {
 }
 
 export async function submitOnboarding(memberId, payload) {
-  if (!API_BASE) return { ok: true, demo: true };
+  if (!API_BASE && DEMO_MODE) return { ok: true, demo: true };
+  if (!API_BASE) throw new Error("API base URL is not configured");
   return request(`/api/onboarding/${memberId}/submit`, {
     method: "POST",
     body: JSON.stringify(payload)
