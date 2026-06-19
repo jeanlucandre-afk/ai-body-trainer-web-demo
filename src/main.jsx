@@ -93,7 +93,7 @@ function App() {
   if (loadState === "loading") screen = <StatusScreen title="Loading your workout" copy="Checking your secure WhatsApp link and loading your plan." />;
   else if (loadState === "expired") screen = <StatusScreen title="Workout link expired" copy="Message your coach on WhatsApp with “Gym” and I’ll send a fresh link." />;
   else if (loadState === "error") screen = <StatusScreen title="Couldn’t open this workout" copy={error?.message || "The session could not be loaded."} />;
-  else if (route === "onboarding") screen = <OnboardingScreen navigate={navigate} memberId={initial.id} token={initial.token} setSession={setSession} />;
+  else if (route === "onboarding") screen = <OnboardingScreen navigate={navigate} memberId={initial.id || session.member_id} token={initial.token} setSession={setSession} />;
   else if (route === "workout") screen = <WorkoutReview navigate={navigate} session={session} />;
   else if (route === "gym") screen = <GymMode navigate={navigate} session={session} updateSessionStatus={updateSessionStatus} />;
   else if (tab === "training" && route === "tab") screen = <TrainingScreen navigate={navigate} session={session} />;
@@ -181,28 +181,54 @@ function HomeScreen({ navigate, session }) {
 function OnboardingScreen({ navigate, memberId, token, setSession }) {
   const [step, setStep] = useState(0);
   const [goals, setGoals] = useState(["Gain muscle"]);
+  const [goalDetails, setGoalDetails] = useState("");
   const [injuries, setInjuries] = useState(["No injuries"]);
   const [days, setDays] = useState(["Mon", "Wed", "Fri"]);
+  const [scheduleTime, setScheduleTime] = useState("18:00");
   const [duration, setDuration] = useState(55);
+  const [trainingLevel, setTrainingLevel] = useState("beginner");
+  const [equipmentNoGos, setEquipmentNoGos] = useState([]);
+  const [motivationStyle, setMotivationStyle] = useState("direct but supportive");
+  const [quietHoursStart, setQuietHoursStart] = useState("21:00");
+  const [quietHoursEnd, setQuietHoursEnd] = useState("08:00");
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [authState, setAuthState] = useState(hasApi && memberId && token ? "checking" : hasApi && memberId && !token && window.location.pathname.startsWith("/onboarding/") ? "missing" : "ready");
+  const [authError, setAuthError] = useState(null);
   const stages = ["Matching goals with injury notes", "Checking gym equipment", "Adding warm-up and cool-down", "Building your first week"];
+
+  useEffect(() => {
+    if (!hasApi || !token) return;
+    let active = true;
+    (async () => {
+      try {
+        await exchangeMagicToken({ token });
+        removeTokenFromUrl();
+        if (active) setAuthState("ready");
+      } catch (err) {
+        if (!active) return;
+        setAuthError(err);
+        setAuthState(err.status === 410 ? "expired" : "invalid");
+      }
+    })();
+    return () => { active = false; };
+  }, [token]);
 
   const finish = async () => {
     setSubmitting(true);
     try {
-      if (hasApi && token) {
-        await exchangeMagicToken({ token });
-        removeTokenFromUrl();
-      }
       const result = await submitOnboarding(memberId || fixtureSession.member_id, {
         goals,
+        goalDetails,
         injuries: injuries.includes("No injuries") ? [] : injuries,
         scheduleDays: days,
+        scheduleTime,
         sessionDurationMinutes: duration,
-        trainingLevel: "beginner",
-        equipmentNoGos: [],
-        motivationStyle: "direct but supportive",
+        trainingLevel,
+        equipmentNoGos,
+        motivationStyle,
+        quietHoursStart,
+        quietHoursEnd,
         timezone: "Europe/Berlin",
         consentAccepted: consent
       });
@@ -215,16 +241,24 @@ function OnboardingScreen({ navigate, memberId, token, setSession }) {
     }
   };
 
+  if (authState === "checking") return <StatusScreen title="Opening onboarding" copy="Checking your secure WhatsApp link." />;
+  if (authState === "missing") return <StatusScreen title="Onboarding link missing" copy="Open the link your coach sent on WhatsApp, or message the coach for a fresh setup link." />;
+  if (authState === "expired") return <StatusScreen title="Onboarding link expired" copy="Message your coach on WhatsApp and I’ll send a fresh setup link." />;
+  if (authState === "invalid") return <StatusScreen title="Onboarding link invalid" copy={authError?.message || "This setup link could not be verified."} />;
+
   return (
     <section className="onboarding">
       <div className="onboard-top">
         <button onClick={() => step ? setStep(step - 1) : navigate("home")}><ArrowLeft /></button>
-        <Dots step={step} total={5} />
+        <Dots step={step} total={6} />
         <Logo compact />
       </div>
       <div className="onboard-scroll">
         {step === 0 && (
-          <ChoiceScreen eyebrow="Goals" title="What are we training for?" copy="Pick what your coach should prioritize." options={["Gain muscle", "Lose body fat", "Increase strength", "Improve cardio", "Boost energy", "Improve mobility"]} selected={goals} toggle={(x) => setGoals((g) => g.includes(x) ? g.filter(v => v !== x) : [...g, x])} />
+          <div className="onboard-stack">
+            <ChoiceScreen eyebrow="Goals" title="What are we training for?" copy="Pick what your coach should prioritize." options={["Gain muscle", "Lose body fat", "Increase strength", "Improve cardio", "Boost energy", "Improve mobility"]} selected={goals} toggle={(x) => setGoals((g) => g.includes(x) ? g.filter(v => v !== x) : [...g, x])} />
+            <label className="field-label">Goal details<textarea value={goalDetails} onChange={(e) => setGoalDetails(e.target.value)} placeholder="Example: 8 kg down, stronger legs, less back pain at work" /></label>
+          </div>
         )}
         {step === 1 && (
           <ChoiceScreen eyebrow="Limitations" title="Anything to protect?" copy="The plan uses this before programming load." options={["No injuries", "Lower back", "Shoulder", "Knee", "Ankle", "Neck", "Elbow", "Limited range"]} selected={injuries} grid toggle={(x) => setInjuries(x === "No injuries" ? ["No injuries"] : injuries.includes(x) ? injuries.filter(v => v !== x) : [...injuries.filter(v => v !== "No injuries"), x])} />
@@ -233,17 +267,30 @@ function OnboardingScreen({ navigate, memberId, token, setSession }) {
           <div className="onboard-stack">
             <Title eyebrow="Schedule" title="Build around your week" copy="Choose realistic training days and session length." />
             <div className="day-picker">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => <button key={d} className={days.includes(d) ? "active" : ""} onClick={() => setDays(days.includes(d) ? days.filter(x => x !== d) : [...days, d])}>{d[0]}<i /></button>)}</div>
+            <label className="field-label">Usual training time<input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} /></label>
             <label className="field-label">Workout length<input type="range" min="30" max="90" step="5" value={duration} onChange={(e) => setDuration(Number(e.target.value))} /><b>{duration} minutes</b></label>
           </div>
         )}
         {step === 3 && (
           <div className="onboard-stack">
+            <Title eyebrow="Preferences" title="Make it usable" copy="Set training level, blocked equipment, coaching tone, and quiet hours." />
+            <ChoiceScreen title="Training level" options={["beginner", "intermediate", "advanced"]} selected={[trainingLevel]} toggle={(x) => setTrainingLevel(x)} grid />
+            <ChoiceScreen title="Equipment no-gos" options={["leg press", "cable station", "chest press", "lat pulldown", "dumbbells", "bike"]} selected={equipmentNoGos} toggle={(x) => setEquipmentNoGos((items) => items.includes(x) ? items.filter(v => v !== x) : [...items, x])} grid />
+            <label className="field-label">Coach style<select value={motivationStyle} onChange={(e) => setMotivationStyle(e.target.value)}><option value="direct but supportive">Direct but supportive</option><option value="calm professional">Calm professional</option><option value="edgy accountability">Edgy accountability</option><option value="friendly beginner">Friendly beginner</option></select></label>
+          </div>
+        )}
+        {step === 4 && (
+          <div className="onboard-stack">
             <Title eyebrow="Safety" title="Consent and boundaries" copy="The coach can guide training, but it does not replace medical advice." />
+            <div className="time-pair">
+              <label className="field-label">Quiet from<input type="time" value={quietHoursStart} onChange={(e) => setQuietHoursStart(e.target.value)} /></label>
+              <label className="field-label">Quiet until<input type="time" value={quietHoursEnd} onChange={(e) => setQuietHoursEnd(e.target.value)} /></label>
+            </div>
             <label className="consent-row"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} /> I understand and accept the training disclaimer.</label>
             <div className="glass checklist">{["No medical diagnosis", "Stop sharp pain", "Human review for red flags"].map((x) => <p key={x}><CheckCircle2 /> <b>{x}</b><span>The coach becomes conservative when safety risk appears.</span></p>)}</div>
           </div>
         )}
-        {step === 4 && (
+        {step === 5 && (
           <div className="build-screen">
             <ThinkingOrb />
             <Title title={submitting ? "Building your training" : "Ready to build"} copy={submitting ? stages[1] : "Your coach will generate a plan, validate it, and save a private session for you."} center />
@@ -252,7 +299,7 @@ function OnboardingScreen({ navigate, memberId, token, setSession }) {
         )}
       </div>
       <div className="onboard-actions">
-        {step < 4 ? <button className="primary gold" onClick={() => setStep(step + 1)}>Continue <ArrowRight /></button> : <button disabled={!consent || submitting} className="primary gold" onClick={finish}>{submitting ? "Creating plan..." : "Create my training plan"} <ArrowRight /></button>}
+        {step < 5 ? <button className="primary gold" onClick={() => setStep(step + 1)}>Continue <ArrowRight /></button> : <button disabled={!consent || submitting} className="primary gold" onClick={finish}>{submitting ? "Creating plan..." : "Create my training plan"} <ArrowRight /></button>}
       </div>
     </section>
   );

@@ -152,7 +152,12 @@ h1, h2, h3, p { margin: 0; }
 .day-picker .active i { opacity:1; }
 .field-label { display:grid; gap:14px; padding:20px; border-radius:20px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.13); font-weight:900; }
 .field-label input { width:100%; accent-color:var(--gold); }
+.field-label input[type="time"], .field-label select, .field-label textarea { border:0; border-radius:14px; background:rgba(255,255,255,.14); color:white; padding:13px 14px; font:inherit; font-weight:800; min-width:0; }
+.field-label textarea { min-height:94px; resize:vertical; line-height:1.35; }
+.field-label textarea::placeholder { color:rgba(255,255,255,.48); }
+.field-label select option { color:var(--black); }
 .field-label b { color:var(--linen); font-size:24px; }
+.time-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
 .consent-row { display:flex; gap:12px; align-items:flex-start; padding:18px; border-radius:20px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.14); line-height:1.35; font-weight:800; }
 .consent-row input { width:22px; height:22px; flex:0 0 auto; margin-top:1px; accent-color:var(--gold); }
 .checklist p { display:grid; grid-template-columns:26px 1fr; gap:4px 9px; margin: 0 0 13px; }

@@ -34,7 +34,17 @@ async function main() {
 
   const userA = await bootstrap("Smoke A", {
     goals: ["Gain strength"],
-    injuries: ["Knee"]
+    goalDetails: "Needs 35 minute sessions after work and no leg press.",
+    injuries: ["Knee"],
+    scheduleDays: ["Tue", "Thu"],
+    scheduleTime: "07:30",
+    sessionDurationMinutes: 35,
+    trainingLevel: "beginner",
+    equipmentNoGos: ["leg press"],
+    motivationStyle: "direct but supportive",
+    quietHoursStart: "22:00",
+    quietHoursEnd: "07:00",
+    timezone: "Europe/Berlin"
   });
   const userB = await bootstrap("Smoke B");
   const browser = await chromium.launch({ headless: true });
@@ -60,6 +70,10 @@ async function main() {
   assert(sessionBody.session_id === userA.workoutSessionId, "session ID mismatch", sessionBody);
   assert(Array.isArray(sessionBody.exercises) && sessionBody.exercises.length > 0, "session has no exercises", sessionBody);
   assert(sessionBody.safety_state === "normal", "new session should start normal", sessionBody);
+  assert(sessionBody.duration_minutes === 35, "session duration did not reflect profile", sessionBody);
+  assert(sessionBody.metrics?.target_days_per_week === 2, "target days did not reflect profile schedule", sessionBody);
+  assert(sessionBody.scheduled_for_local === "07:30", "scheduled time did not reflect profile", sessionBody);
+  assert(!JSON.stringify(sessionBody.exercises).toLowerCase().includes("leg press"), "blocked equipment appeared in exercises", sessionBody.exercises);
 
   const duplicateEventId = `smoke_${Date.now()}`;
   const eventPayload = { eventId: duplicateEventId, eventType: "set_completed", payload: { source: "production-smoke" } };
@@ -68,6 +82,16 @@ async function main() {
   assert(firstEvent.status() === 200, "first event post failed", { status: firstEvent.status(), body: await firstEvent.text() });
   assert(secondEvent.status() === 200, "duplicate event post failed", { status: secondEvent.status(), body: await secondEvent.text() });
   assert((await secondEvent.json()).duplicate === true, "duplicate event was not deduped");
+
+  const malformedEvent = await context.request.post(`${webBase}/api/workout-sessions/${userA.workoutSessionId}/events`, {
+    data: { eventId: `${duplicateEventId}_bad`, eventType: "not_real", payload: {} }
+  });
+  assert(malformedEvent.status() === 400, "malformed event was not rejected", { status: malformedEvent.status(), body: await malformedEvent.text() });
+
+  const checkin = await context.request.post(`${webBase}/api/checkins/${sessionBody.member_id}/submit`, {
+    data: { adherence: "good", energy: "medium", soreness: "low", source: "production-smoke" }
+  });
+  assert(checkin.status() === 200, "check-in submit failed", { status: checkin.status(), body: await checkin.text() });
 
   const painEvent = await context.request.post(`${webBase}/api/workout-sessions/${userA.workoutSessionId}/events`, {
     data: { eventId: `${duplicateEventId}_pain`, eventType: "pain_reported", payload: { source: "production-smoke" } }
@@ -108,6 +132,8 @@ async function main() {
       "token_stripping",
       "session_mapping",
       "event_dedupe",
+      "malformed_event_block",
+      "checkin_submit",
       "pain_safety_state",
       "completion_state",
       "cross_member_isolation",
